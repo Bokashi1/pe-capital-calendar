@@ -306,7 +306,7 @@
     if (mode === 'error') { el.classList.add('off'); txt.textContent = 'تعذّر تحميل المواعيد. تحقّق من الاتصال ثم اضغط «تحديث الآن».'; renderError(); return; }
     if (mode === 'offline' || state.source === 'cache') { el.classList.add('off'); txt.textContent = 'بدون اتصال — آخر بيانات محفوظة: ' + when + ' (بتوقيت الكويت)'; return; }
     if (state.source === 'live') { el.classList.add('live'); txt.textContent = 'مباشر من تقويم Google · آخر تحديث: ' + when + ' (الكويت)'; return; }
-    if (state.source === 'snapshot') { el.classList.add('snap'); txt.textContent = 'من النسخة الاحتياطية (تتحدّث كل ~10 دقائق) · آخر تحديث: ' + when + ' (الكويت)'; }
+    if (state.source === 'snapshot') { el.classList.add('snap'); txt.textContent = 'من النسخة الاحتياطية · آخر تحديث: ' + when + ' (الكويت)'; }
   }
 
   // ---------------------------------------------------------------- filtering
@@ -674,9 +674,9 @@
     for (var r = 0; r < n; r++) for (var cc = 0; cc < n; cc++) if (qr.isDark(r, cc) && !isFinder(r, cc)) x.fillRect(px + off + cc * cell, py + off + r * cell, cell, cell);
     [[0, 0], [0, n - 7], [n - 7, 0]].forEach(function (f) {
       var fx = px + off + f[1] * cell, fy = py + off + f[0] * cell;
-      x.fillStyle = '#0e8a63'; roundRect(x, fx, fy, 7 * cell, 7 * cell, cell * 1.6); x.fill();
-      x.fillStyle = '#fff'; roundRect(x, fx + cell, fy + cell, 5 * cell, 5 * cell, cell * 1.1); x.fill();
-      x.fillStyle = dark; roundRect(x, fx + 2 * cell, fy + 2 * cell, 3 * cell, 3 * cell, cell * .8); x.fill();
+      x.fillStyle = '#0e8a63'; roundRect(x, fx, fy, 7 * cell, 7 * cell, cell * .6); x.fill();
+      x.fillStyle = '#fff'; roundRect(x, fx + cell, fy + cell, 5 * cell, 5 * cell, cell * .42); x.fill();
+      x.fillStyle = dark; roundRect(x, fx + 2 * cell, fy + 2 * cell, 3 * cell, 3 * cell, cell * .3); x.fill();
     });
     x.fillStyle = '#fff'; x.font = '700 44px Tajawal, "Noto Kufi Arabic", sans-serif';
     x.fillText('📱 امسح الرمز لفتح الرزنامة', W / 2, py + qrSize + 120);
