@@ -13,7 +13,8 @@
   var OUTLOOK_SUBSCRIBE = 'https://outlook.live.com/calendar/0/addfromweb?url=' + encodeURIComponent(ICS_URL) +
     '&name=' + encodeURIComponent('رزنامة التربية البدنية – العاصمة');
   var SNAPSHOTS = [
-    'https://raw.githubusercontent.com/Bokashi1/pe-capital-calendar/main/data/events.ics',
+    // same-origin copy (note: raw.githubusercontent.com is NOT used — from a github.io page, HTTP/2
+    // connection coalescing can route it to GitHub Pages and return 404)
     'data/events.ics'
   ];
   // Public CORS proxies, tried in order (the last one that worked is tried first next time).
@@ -466,7 +467,7 @@
     el.innerHTML = '<div class="next-top"><span>' + (ongoing ? '<span class="live-pill"><i></i>جارٍ الآن</span>' : '⏱️ الحدث القادم' + (hasFilters() ? ' (حسب التصفية)' : '')) + '</span>' +
       '<span>' + (relDay(cand.startDay) || '') + '</span></div>' +
       '<p class="next-title"><span>' + cand.emojis.join('') + '</span>' + esc(cand.title) + '</p>' +
-      '<div class="next-meta">' + tagsHTML(cand).replace(/class="tag"/g, 'class="tag" ') + '</div>' +
+      '<div class="tags" style="margin-top:2px">' + tagsHTML(cand) + '</div>' +
       '<div class="next-meta" style="margin-top:4px">📅 ' + esc(when) + ' · 📍 ' + esc(cand.location || 'يحدد لاحقًا') + '</div>' +
       '<div class="countdown" aria-label="' + (ongoing ? 'ينتهي بعد' : 'يبدأ بعد') + '">' +
       '<div><b id="cdD">0</b><span>يوم</span></div><div><b id="cdH">0</b><span>ساعة</span></div><div><b id="cdM">0</b><span>دقيقة</span></div><div><b id="cdS">0</b><span>ثانية</span></div></div>';
@@ -555,7 +556,7 @@
       '<div class="info-row"><span class="ico">📍</span><div><b>المكان</b>' + (hasPlace(e.location)
         ? '<a href="' + mapsUrl(e.location) + '" target="_blank" rel="noopener">' + esc(e.location) + ' ↗</a>' : esc(e.location || 'يحدد لاحقًا')) + '</div></div>';
     if (e.group) h += '<div class="info-row"><span class="ico">👥</span><div><b>تفاصيل المجموعة</b>' + escT(e.group) + '</div></div>';
-    var skip = /^(العام الدراسي|المرحلة|نوع البطولة|اللعبة|وقت البداية|وقت النهاية|تفاصيل المجموعة|المجموعة)$/;
+    var skip = /^(العام الدراسي|المرحلة|نوع البطولة|اللعبة|وقت البداية|وقت النهاية|تفاصيل المجموعة|المجموعة|المكان|الموقع)$/;
     e.fieldOrder.forEach(function (k) {
       if (skip.test(k) || !e.fields[k]) return;
       h += '<div class="info-row"><span class="ico">ℹ️</span><div><b>' + esc(k) + '</b>' + escT(e.fields[k]) + '</div></div>';
@@ -567,7 +568,7 @@
     }
     h += '<div class="actions">' +
       '<a class="btn btn-brand" href="' + esc(gcalTemplate(e)) + '" target="_blank" rel="noopener">أضف إلى Google</a>' +
-      '<button type="button" class="btn btn-soft" data-act="ics" data-id="' + e.id + '">' + (isIOS || isMac ? 'أضف لتقويم Apple' : 'تنزيل ‎.ics') + '</button>' +
+      '<button type="button" class="btn btn-soft" data-act="ics" data-id="' + e.id + '">' + (isIOS || isMac ? 'أضف لتقويم Apple' : 'تنزيل ملف التقويم') + '</button>' +
       '<button type="button" class="btn btn-soft wide" data-act="share-ev" data-id="' + e.id + '">مشاركة هذا الموعد</button></div>';
     var extra = e.intro.concat(e.notes);
     if (extra.length) h += '<details class="notes"><summary>ملاحظات ومراجع</summary>' + extra.map(function (n) { return '<p>' + escT(n) + '</p>'; }).join('') + '</details>';

@@ -34,7 +34,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css?v=2">
+  <link rel="stylesheet" href="assets/style.css?v=3">
 </head>
 <body>
   <header class="hero">
@@ -54,13 +54,13 @@
           أضف الرزنامة إلى تقويمك
         </button>
         <div class="hero-row">
-          <button class="btn btn-glass" id="btnShare" type="button">
+          <button class="btn btn-glass" id="btnShare" type="button" aria-label="مشاركة رابط الرزنامة">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.4a3 3 0 0 0 0-1.6l6.7-3.4A3 3 0 1 0 15 7l-6.7 3.4a3 3 0 1 0 0 3.2L15 17a3 3 0 1 0 3-1z"/></svg>
-            مشاركة الرابط
+            <span>مشاركة</span>
           </button>
-          <button class="btn btn-glass" id="btnQR" type="button">
+          <button class="btn btn-glass" id="btnQR" type="button" aria-label="رمز QR للرزنامة">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm8-2h2v2h-2zm2 2h2v2h-2zm-2 2h2v2h-2zm4-4h2v4h-2zm0 6h2v2h-2zm-2 0h2v2h-2zm-2 0v-2h2v2z"/></svg>
-            رمز QR
+            <span>QR</span>
           </button>
         </div>
       </div>
@@ -78,8 +78,11 @@
         <button id="qClear" class="icon-btn" type="button" aria-label="مسح البحث" hidden>✕</button>
         <datalist id="schoolsList"></datalist>
       </div>
-      <div class="chips-row" role="group" aria-label="المرحلة" id="stageChips"></div>
-      <div class="chips-row" role="group" aria-label="نوع البطولة" id="typeChips"></div>
+      <div class="chips-row">
+        <div class="chip-group" role="group" aria-label="المرحلة" id="stageChips"></div>
+        <span class="chip-sep" aria-hidden="true"></span>
+        <div class="chip-group" role="group" aria-label="نوع البطولة" id="typeChips"></div>
+      </div>
       <div class="chips-row scroll" role="group" aria-label="اللعبة" id="sportChips"></div>
       <div class="view-bar">
         <div class="seg" role="tablist" aria-label="طريقة العرض">
@@ -116,7 +119,7 @@
 
   <noscript><p class="wrap">يتطلب هذا التقويم تفعيل JavaScript.</p></noscript>
   <script src="vendor/qrcode.js"></script>
-  <script src="assets/ics.js?v=2"></script>
-  <script src="assets/app.js?v=2"></script>
+  <script src="assets/ics.js?v=3"></script>
+  <script src="assets/app.js?v=3"></script>
 </body>
 </html>
