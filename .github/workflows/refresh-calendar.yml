@@ -1,0 +1,61 @@
+name: Refresh calendar snapshot
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes (GitHub may delay scheduled runs a little)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-calendar
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download public ICS from Google Calendar
+        run: |
+          set -euo pipefail
+          URL="https://calendar.google.com/calendar/ical/149ccba232b830c7557629b747f383272b6576bc8ef69c284663f897ad860b2d%40group.calendar.google.com/public/basic.ics"
+          curl -fsSL --retry 3 --retry-delay 5 -m 60 "$URL" -o /tmp/new.ics
+          grep -q "BEGIN:VCALENDAR" /tmp/new.ics
+          grep -q "END:VCALENDAR" /tmp/new.ics
+          echo "events: $(grep -c BEGIN:VEVENT /tmp/new.ics || true)"
+
+      - name: Update snapshot only if the calendar content changed
+        run: |
+          set -euo pipefail
+          mkdir -p data
+          # DTSTAMP changes on every download, so ignore it when comparing
+          norm() { grep -v '^DTSTAMP:' "$1" 2>/dev/null | sha256sum | cut -d' ' -f1; }
+          OLD=$( [ -f data/events.ics ] && norm data/events.ics || echo none )
+          NEW=$(norm /tmp/new.ics)
+          NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          COUNT=$(grep -c BEGIN:VEVENT /tmp/new.ics || true)
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "$OLD" != "$NEW" ]; then
+            cp /tmp/new.ics data/events.ics
+            printf '{\n  "updatedAt": "%s",\n  "events": %s,\n  "sha256": "%s"\n}\n' "$NOW" "$COUNT" "$NEW" > data/meta.json
+            git add data/events.ics data/meta.json
+            git commit -m "Update calendar snapshot ($COUNT events)"
+          else
+            # Keep the scheduled workflow alive (GitHub disables schedules after 60 days without repo activity)
+            LAST=$(git log -1 --format=%ct -- data/meta.json 2>/dev/null || echo 0)
+            if [ $(( $(date +%s) - ${LAST:-0} )) -gt $(( 20 * 86400 )) ]; then
+              printf '{\n  "updatedAt": "%s",\n  "events": %s,\n  "sha256": "%s",\n  "heartbeat": true\n}\n' "$NOW" "$COUNT" "$NEW" > data/meta.json
+              git add data/meta.json
+              git commit -m "Heartbeat: calendar unchanged"
+            else
+              echo "No changes."
+              exit 0
+            fi
+          fi
+          for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done
+          exit 1
