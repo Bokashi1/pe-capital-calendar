@@ -653,21 +653,32 @@
     if (navigator.share) navigator.share({ title: e.cleanTitle, text: text, url: url }).catch(function () {}); else copy(text + '\n' + url, 'تم نسخ تفاصيل الموعد');
   }
   function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  var logoImg = new Image(); logoImg.decoding = 'async'; logoImg.src = 'assets/img/logo-mark-600.png';
+  function logoReady() { return logoImg.complete && logoImg.naturalWidth > 0; }
   function makeQRCanvas(url) {
     var qr = qrcode(0, 'M'); qr.addData(url); qr.make();
-    var n = qr.getModuleCount(), W = 1080, H = 1350, quiet = 4;
-    var qrSize = 760, cell = Math.floor(qrSize / (n + quiet * 2)); qrSize = cell * (n + quiet * 2);
+    var n = qr.getModuleCount(), W = 1080, H = 1560, quiet = 4;
+    var qrSize = 700, cell = Math.floor(qrSize / (n + quiet * 2)); qrSize = cell * (n + quiet * 2);
     var c = document.createElement('canvas'); c.width = W; c.height = H;
     var x = c.getContext('2d');
     var g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#0b2340'); g.addColorStop(.5, '#0b3b36'); g.addColorStop(1, '#0e8a63');
     x.fillStyle = g; x.fillRect(0, 0, W, H);
     x.globalAlpha = .12; x.fillStyle = '#ffb020';
-    for (var i = 0; i < W; i += 40) for (var j = 0; j < 260; j += 40) { x.beginPath(); x.arc(i + 20, j + 20, 2.5, 0, 7); x.fill(); }
+    for (var i = 0; i < W; i += 40) for (var j = 0; j < 300; j += 40) { x.beginPath(); x.arc(i + 20, j + 20, 2.5, 0, 7); x.fill(); }
     x.globalAlpha = 1;
+    // logo badge
+    var B = 230, bx = (W - B) / 2, by = 56;
+    x.save(); x.shadowColor = 'rgba(0,0,0,.35)'; x.shadowBlur = 30; x.shadowOffsetY = 10;
+    x.fillStyle = '#fff'; roundRect(x, bx, by, B, B, 52); x.fill(); x.restore();
+    if (logoReady()) {
+      var lp = 22, lw = B - lp * 2, lh = lw * logoImg.naturalHeight / logoImg.naturalWidth;
+      if (lh > B - lp * 2) { lh = B - lp * 2; lw = lh * logoImg.naturalWidth / logoImg.naturalHeight; }
+      x.drawImage(logoImg, bx + (B - lw) / 2, by + (B - lh) / 2, lw, lh);
+    }
     x.direction = 'rtl'; x.textAlign = 'center'; x.fillStyle = '#fff';
-    x.font = '800 58px Tajawal, "Noto Kufi Arabic", sans-serif'; x.fillText('رزنامة التربية البدنية', W / 2, 118);
-    x.font = '500 38px Tajawal, "Noto Kufi Arabic", sans-serif'; x.fillStyle = 'rgba(255,255,255,.85)'; x.fillText('منطقة العاصمة التعليمية · الموسم \u20662026–2027\u2069', W / 2, 182);
-    var px = (W - qrSize) / 2, py = 240;
+    x.font = '800 58px Tajawal, "Noto Kufi Arabic", sans-serif'; x.fillText('رزنامة التربية البدنية', W / 2, by + B + 92);
+    x.font = '500 36px Tajawal, "Noto Kufi Arabic", sans-serif'; x.fillStyle = 'rgba(255,255,255,.85)'; x.fillText('منطقة العاصمة التعليمية · الموسم \u20662026–2027\u2069', W / 2, by + B + 150);
+    var px = (W - qrSize) / 2, py = by + B + 210;
     x.fillStyle = '#fff'; roundRect(x, px - 30, py - 30, qrSize + 60, qrSize + 60, 48); x.fill();
     var off = quiet * cell, dark = '#0b2340';
     function isFinder(r, cc) { return (r < 7 && cc < 7) || (r < 7 && cc >= n - 7) || (r >= n - 7 && cc < 7); }
@@ -684,7 +695,7 @@
     x.direction = 'ltr'; x.font = '500 30px Tajawal, sans-serif'; x.fillStyle = 'rgba(255,255,255,.8)';
     x.fillText(url.replace(/^https?:\/\//, '').replace(/\/$/, ''), W / 2, py + qrSize + 175);
     x.direction = 'rtl'; x.font = '500 28px Tajawal, sans-serif'; x.fillStyle = 'rgba(255,255,255,.65)';
-    x.fillText('التوجيه الفني للتربية البدنية · بنين', W / 2, H - 50);
+    x.fillText('التوجيه الفني للتربية البدنية – بنين · الإدارة العامة لمنطقة العاصمة التعليمية', W / 2, H - 48);
     return c;
   }
   window.__makeQRCanvas = makeQRCanvas;
@@ -698,7 +709,9 @@
       '<button type="button" class="btn btn-soft wide" data-act="share">مشاركة الرابط</button></div>';
     showSheet(h, 'qr', push === false ? null : '#qr');
     var draw = function () { qrCanvas = makeQRCanvas(SITE_URL); var b = $('qrBox'); if (b) { b.innerHTML = ''; b.appendChild(qrCanvas); qrCanvas.setAttribute('role', 'img'); qrCanvas.setAttribute('aria-label', 'رمز QR لرابط الرزنامة'); } };
-    if (document.fonts && document.fonts.load) Promise.all([document.fonts.load('800 58px Tajawal'), document.fonts.load('500 38px Tajawal')]).then(draw, draw); else draw();
+    var waits = [logoImg.decode ? logoImg.decode().catch(function () {}) : null];
+    if (document.fonts && document.fonts.load) waits.push(document.fonts.load('800 58px Tajawal'), document.fonts.load('500 36px Tajawal'), document.fonts.load('700 44px Tajawal'));
+    Promise.all(waits).then(draw, draw);
   }
   function qrBlob(cb) { (qrCanvas || makeQRCanvas(SITE_URL)).toBlob(cb, 'image/png'); }
   function qrDownload() {

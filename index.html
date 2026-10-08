@@ -10,7 +10,9 @@
   <meta name="color-scheme" content="light dark">
   <link rel="canonical" href="https://bokashi1.github.io/pe-capital-calendar/">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/favicon.ico" sizes="any">
+  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="icons/favicon-48.png" sizes="48x48" type="image/png">
   <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -25,7 +27,8 @@
   <meta property="og:title" content="رزنامة التوجيه الفني للتربية البدنية – منطقة العاصمة التعليمية 2026–2027">
   <meta property="og:description" content="مواعيد البطولات الداخلية والخارجية لجميع المراحل — ابحث عن مدرستك وأضف الرزنامة إلى تقويم هاتفك.">
   <meta property="og:url" content="https://bokashi1.github.io/pe-capital-calendar/">
-  <meta property="og:image" content="https://bokashi1.github.io/pe-capital-calendar/icons/og-image.png">
+  <meta property="og:image" content="https://bokashi1.github.io/pe-capital-calendar/icons/og-image.jpg">
+  <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="رزنامة التوجيه الفني للتربية البدنية – منطقة العاصمة التعليمية">
@@ -34,14 +37,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css?v=3">
+  <link rel="stylesheet" href="assets/style.css?v=4">
 </head>
 <body>
   <header class="hero">
     <div class="hero-bg" aria-hidden="true"></div>
     <div class="wrap hero-inner">
       <div class="brand">
-        <img class="brand-logo" src="icons/icon.svg" alt="" width="52" height="52">
+        <div class="brand-badge">
+          <picture>
+            <source srcset="assets/img/logo-mark.webp" type="image/webp">
+            <img src="assets/img/logo-mark.png" alt="شعار التوجيه الفني للتربية البدنية – بنين، منطقة العاصمة التعليمية" width="251" height="240" decoding="async" fetchpriority="high">
+          </picture>
+        </div>
         <div>
           <p class="eyebrow">التوجيه الفني للتربية البدنية · بنين</p>
           <h1>رزنامة منطقة العاصمة التعليمية</h1>
@@ -98,6 +106,17 @@
   </main>
 
   <footer class="wrap footer">
+    <div class="org-card">
+      <picture>
+        <source srcset="assets/img/logo-full.webp" type="image/webp">
+        <img src="assets/img/logo-full.png" alt="شعار التوجيه الفني للتربية البدنية – بنين، الإدارة العامة لمنطقة العاصمة التعليمية" width="520" height="595" loading="lazy" decoding="async">
+      </picture>
+      <div>
+        <b>التوجيه الفني للتربية البدنية – بنين</b>
+        <span>الإدارة العامة لمنطقة العاصمة التعليمية</span>
+        <span class="muted small">رزنامة الموسم الدراسي <span dir="ltr">2026–2027</span></span>
+      </div>
+    </div>
     <div class="status" id="status">
       <span class="dot" id="statusDot"></span>
       <span id="statusText">جارٍ تحميل المواعيد…</span>
@@ -119,7 +138,7 @@
 
   <noscript><p class="wrap">يتطلب هذا التقويم تفعيل JavaScript.</p></noscript>
   <script src="vendor/qrcode.js"></script>
-  <script src="assets/ics.js?v=3"></script>
-  <script src="assets/app.js?v=3"></script>
+  <script src="assets/ics.js?v=4"></script>
+  <script src="assets/app.js?v=4"></script>
 </body>
 </html>
