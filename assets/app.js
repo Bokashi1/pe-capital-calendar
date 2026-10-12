@@ -29,14 +29,15 @@
   ];
   // Optional: your own always-on proxy (e.g. the Google Apps Script in /proxy/apps-script.gs). Leave '' to disable.
   // When set, it is tried first, before the public proxies.
+  // DIRECT source: the Google Apps Script web app (proxy/apps-script.gs) that reads the calendar
+  // with CalendarApp from the owner's account and returns JSON. Paste its /exec URL here.
   var CUSTOM_PROXY = '';
-  if (CUSTOM_PROXY) PROXIES.unshift({ name: 'custom', make: function (u) { return CUSTOM_PROXY + (CUSTOM_PROXY.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now(); } });
   var PROXY_TIMEOUT = 15000;
   var PROXY_STAGGER = 2500;  // the last proxy that worked gets a head start, then the others race
   var AUTO_REFRESH_MS = 3 * 60 * 1000;
   var OFF = 3 * 3600000;          // Kuwait = UTC+3 (no DST)
   var DAY = 86400000;
-  var LS = { data: 'pecal.data.v1', filters: 'pecal.filters.v1', view: 'pecal.view.v1', proxy: 'pecal.proxy.v1' };
+  var LS = { data: 'pecal.data.v2', filters: 'pecal.filters.v1', view: 'pecal.view.v1', proxy: 'pecal.proxy.v1' };
 
   var MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
   var DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
@@ -254,60 +255,132 @@
     }
     return next();
   }
-  function signature(text) { return hash(text.replace(/^DTSTAMP:.*$/mg, '')); }
+  // ---- payloads: {kind:'ics'|'json', body:string} -----------------------------------
+  function parseDateish(v, allDay) {
+    if (!v) return NaN;
+    if (allDay || /^\d{4}-\d{2}-\d{2}$/.test(v)) return Date.parse(String(v).slice(0, 10) + 'T00:00:00+03:00');
+    return Date.parse(v);
+  }
+  function parsePayload(p) {
+    if (p.kind === 'json') {
+      var o = JSON.parse(p.body);
+      if (!o || !o.events) throw new Error('bad json');
+      return {
+        name: (o.calendar && o.calendar.name) || '',
+        events: o.events.map(function (e) {
+          var st = parseDateish(e.start, e.allDay), en = parseDateish(e.end, e.allDay);
+          return { uid: e.id || '', summary: e.title || '', description: e.description || '', location: e.location || '',
+            url: '', status: '', start: st, end: en, dateOnly: !!e.allDay, recurring: !!e.recurring,
+            instanceKey: (e.id || '') + '|' + st, lastModified: e.lastUpdated ? Date.parse(e.lastUpdated) : null };
+        }).filter(function (e) { return !isNaN(e.start) && !isNaN(e.end); }).sort(function (a, b) { return a.start - b.start || a.end - b.end; }),
+        lastChange: o.lastUpdated ? Date.parse(o.lastUpdated) : null
+      };
+    }
+    var cal = ICS.parseICS(p.body);
+    return { name: cal.name, events: cal.events, lastChange: null };
+  }
+  // Content signature independent of event order, DTSTAMP and source format.
+  function contentSig(events) {
+    return hash(events.map(function (e) {
+      return [e.uid.replace(/@google\.com$/, ''), e.start, e.end, e.dateOnly ? 1 : 0, e.summary, e.location, e.description.replace(/\s+/g, ' ').trim()].join('\u0001');
+    }).sort().join('\u0002'));
+  }
+  function maxLastModified(events) {
+    var m = 0; events.forEach(function (e) { if (e.lastModified && e.lastModified > m) m = e.lastModified; }); return m || null;
+  }
 
-  function apply(text, source, via, at) {
-    var sig = signature(text);
-    state.source = source; state.via = via || ''; state.fetchedAt = at || Date.now();
-    if (sig !== state.sig) {
-      var cal = ICS.parseICS(text);
+  // stamp = how fresh this data is known to be (used so an older copy never replaces a newer one)
+  function apply(payload, source, info) {
+    info = info || {};
+    var cal;
+    try { cal = parsePayload(payload); } catch (e) { if (window.console) console.warn('parse', e); return false; }
+    var sig = contentSig(cal.events);
+    var changed = sig !== state.sig;
+    state.source = source;
+    state.stamp = info.stamp || Date.now();
+    state.lastChange = info.lastChange || cal.lastChange || maxLastModified(cal.events) || state.lastChange || null;
+    if (changed) {
       state.sig = sig;
       state.calName = cal.name;
       state.events = cal.events.map(enrich);
       buildChips(); buildSchoolList(); render();
       openFromHash();
     }
-    if (source !== 'cache') { try { localStorage.setItem(LS.data, JSON.stringify({ text: text, source: source, via: via, at: state.fetchedAt })); } catch (e) {} }
+    if (source !== 'cache') {
+      try { localStorage.setItem(LS.data, JSON.stringify({ payload: payload, stamp: state.stamp, lastChange: state.lastChange })); } catch (e) {}
+    }
     setStatus();
+    return changed;
+  }
+
+  function fetchText(url) {
+    var to = withTimeout(PROXY_TIMEOUT);
+    return fetch(url, { cache: 'no-store', signal: to.signal, credentials: 'omit' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    }).then(function (t) { to.done(); return t; }, function (e) { to.done(); throw e; });
+  }
+  // Direct from the owner's Google account (Apps Script) — JSON (or ICS text)
+  function fetchDirect() {
+    if (!CUSTOM_PROXY) return Promise.reject(new Error('no direct source'));
+    return fetchText(CUSTOM_PROXY + (CUSTOM_PROXY.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now()).then(function (t) {
+      t = t.replace(/^\uFEFF/, '');
+      if (/^\s*\{/.test(t)) { var o = JSON.parse(t); if (o.error) throw new Error(o.error); return { kind: 'json', body: t }; }
+      if (looksLikeICS(t)) return { kind: 'ics', body: ICS.bytesToText(t) };
+      throw new Error('unexpected response');
+    });
+  }
+  // Repo copy (refreshed by GitHub Actions only on real changes) + its meta (time of the real last edit)
+  function fetchRepo() {
+    var meta = fetchText('data/meta.json?t=' + Date.now()).then(function (t) { return JSON.parse(t); }, function () { return {}; });
+    return Promise.all([fetchSnapshot(), meta]).then(function (r) {
+      var m = r[1] || {}, upd = m.updatedAt ? Date.parse(m.updatedAt) : null;
+      return { payload: { kind: 'ics', body: r[0].text }, lastChange: upd, stamp: m.detectedAt ? Date.parse(m.detectedAt) : (upd || 0) };
+    });
   }
 
   function refresh(manual) {
-    if (state.inflight) return;
+    if (state.inflight) { if (manual) { state.wantToast = true; toast('جارٍ التحقق من التحديثات…'); } return; }
     state.inflight = true; state.lastAttempt = Date.now();
     setStatus('loading');
-    var liveDone = false, snapUsed = false, snapText = null;
-    // Snapshot in parallel (renders fast for first-time visitors); live data always wins.
-    var snapP = fetchSnapshot().then(function (r) {
-      snapText = r;
-      if (!liveDone && (!state.events.length || state.source === 'cache')) { apply(r.text, 'snapshot', r.via); snapUsed = true; setStatus('loading'); }
+    var directDone = false, anyChange = false, gotSomething = false;
+    function note(ch) { gotSomething = true; if (ch) anyChange = true; }
+    var repoP = fetchRepo().then(function (r) {
+      // never let the repo copy replace data that is known to be newer
+      if (!directDone && (!state.sig || ((state.source === 'cache' || state.source === 'repo') && r.stamp >= (state.stamp || 0)))) note(apply(r.payload, 'repo', { lastChange: r.lastChange, stamp: r.stamp }));
+      else gotSomething = true;
     }, function () {});
-    fetchLive().then(function (r) {
-      liveDone = true; state.liveOk = true;
-      apply(r.text, 'live', r.via);
-      if (manual) toast('تم التحديث من تقويم Google ✓');
-    }, function () {
-      liveDone = true;
-      return snapP.then(function () {
-        if (snapText) { apply(snapText.text, 'snapshot', snapText.via); if (manual) toast('تم التحديث من النسخة الاحتياطية'); }
-        else if (state.events.length) { setStatus('offline'); if (manual) toast('تعذّر الاتصال — تُعرض آخر بيانات محفوظة'); }
-        else { setStatus('error'); }
-      });
-    }).then(function () { state.inflight = false; }, function () { state.inflight = false; });
+    var directP = CUSTOM_PROXY ? fetchDirect() : fetchLive().then(function (r) { return { kind: 'ics', body: r.text }; });
+    directP.then(function (payload) {
+      directDone = true;
+      note(apply(payload, 'direct', { stamp: Date.now() }));
+    }, function (err) {
+      if (window.console) console.warn('[direct]', err && err.message);
+      return repoP;
+    }).then(function () {
+      return repoP;
+    }).then(function () {
+      state.inflight = false;
+      if (state.wantToast) { manual = true; state.wantToast = false; }
+      if (!gotSomething) { setStatus(state.sig ? 'offline' : 'error'); if (manual) toast('تعذّر الاتصال — تُعرض آخر بيانات محفوظة'); return; }
+      setStatus();
+      if (manual) toast(anyChange ? 'تم تحديث المواعيد ✓' : 'الرزنامة محدّثة — لا توجد تعديلات جديدة');
+    }, function () { state.inflight = false; setStatus(); });
   }
 
+  function fmtWhen(ms) { return fmtTime(ms) + ' · ' + fmtDayShort(dayKey(ms)); }
   function setStatus(mode) {
     var el = $('status'), txt = $('statusText');
     el.className = 'status';
-    var when = state.fetchedAt ? fmtTime(state.fetchedAt) + ' · ' + fmtDayShort(dayKey(state.fetchedAt)) : '';
+    var last = state.lastChange ? 'آخر تعديل على الرزنامة: ' + fmtWhen(state.lastChange) + ' (بتوقيت الكويت)' : 'الرزنامة محمّلة';
     if (mode === 'loading') {
       el.classList.add('loading');
-      txt.textContent = state.events.length ? 'جارٍ التحقق من التحديثات المباشرة…' + (when ? ' (آخر تحديث ' + when + ')' : '') : 'جارٍ تحميل المواعيد…';
+      txt.textContent = state.sig ? last : 'جارٍ تحميل المواعيد…';
       return;
     }
     if (mode === 'error') { el.classList.add('off'); txt.textContent = 'تعذّر تحميل المواعيد. تحقّق من الاتصال ثم اضغط «تحديث الآن».'; renderError(); return; }
-    if (mode === 'offline' || state.source === 'cache') { el.classList.add('off'); txt.textContent = 'بدون اتصال — آخر بيانات محفوظة: ' + when + ' (بتوقيت الكويت)'; return; }
-    if (state.source === 'live') { el.classList.add('live'); txt.textContent = 'مباشر من تقويم Google · آخر تحديث: ' + when + ' (الكويت)'; return; }
-    if (state.source === 'snapshot') { el.classList.add('snap'); txt.textContent = 'من النسخة الاحتياطية · آخر تحديث: ' + when + ' (الكويت)'; }
+    if (mode === 'offline') { el.classList.add('off'); txt.textContent = 'بدون اتصال — ' + last; return; }
+    el.classList.add('live'); txt.textContent = last;
   }
 
   // ---------------------------------------------------------------- filtering
@@ -789,7 +862,7 @@
   // ---------------------------------------------------------------- boot
   try {
     var cached = JSON.parse(localStorage.getItem(LS.data) || 'null');
-    if (cached && cached.text) apply(cached.text, 'cache', cached.via, cached.at);
+    if (cached && cached.payload) apply(cached.payload, 'cache', { stamp: cached.stamp, lastChange: cached.lastChange });
   } catch (e) {}
   if (!state.events.length) render();
   refresh();
