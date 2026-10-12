@@ -31,7 +31,7 @@
   // When set, it is tried first, before the public proxies.
   // DIRECT source: the Google Apps Script web app (proxy/apps-script.gs) that reads the calendar
   // with CalendarApp from the owner's account and returns JSON. Paste its /exec URL here.
-  var CUSTOM_PROXY = '';
+  var CUSTOM_PROXY = 'https://script.google.com/macros/s/AKfycbyCt7Ze8R-gn9L_v3rqJxPlXHMw2-CNjw1IzSg3E9u9EhJmNjlnwnZ_vvETwR3NP4ys/exec';
   var PROXY_TIMEOUT = 15000;
   var PROXY_STAGGER = 2500;  // the last proxy that worked gets a head start, then the others race
   var AUTO_REFRESH_MS = 3 * 60 * 1000;
