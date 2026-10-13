@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>إحصاءات الزيارات – رزنامة التربية البدنية</title>
+  <meta name="theme-color" content="#0b3b36">
+  <link rel="icon" href="icons/favicon.ico" sizes="any">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css?v=8">
+  <style>
+    .hero{padding-bottom:56px}
+    .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:-40px;position:relative;z-index:2}
+    @media (min-width:700px){.kpis{grid-template-columns:repeat(4,1fr)}}
+    .kpi{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:14px 16px}
+    .kpi b{display:block;font-size:2rem;font-weight:800;color:var(--brand);line-height:1.2;font-variant-numeric:tabular-nums}
+    .kpi span{color:var(--muted);font-size:.85rem;font-weight:700}
+    .panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:16px;margin-top:14px}
+    .panel h2{margin:0 0 12px;font-size:1.05rem;font-weight:800}
+    .chart{display:flex;align-items:flex-end;gap:6px;height:170px;direction:ltr}
+    .bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+    .bar i{display:block;width:100%;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,var(--brand-2),var(--brand));min-height:2px;position:relative}
+    .bar i u{position:absolute;inset:auto 0 0 0;background:var(--accent);opacity:.85;border-radius:3px;text-decoration:none}
+    .bar small{font-size:.62rem;color:var(--muted);margin-top:4px;white-space:nowrap}
+    .bar em{font-style:normal;font-size:.7rem;font-weight:800;margin-bottom:3px}
+    .legend2{display:flex;gap:14px;font-size:.8rem;color:var(--muted);margin-top:10px}
+    .legend2 span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-end:5px;background:var(--c)}
+    table{width:100%;border-collapse:collapse;font-size:.95rem}
+    td{padding:9px 4px;border-bottom:1px solid var(--line)} td:last-child{text-align:left;font-weight:800;font-variant-numeric:tabular-nums}
+    .note{font-size:.82rem;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="wrap hero-inner">
+      <div class="brand">
+        <div class="brand-badge"><img src="assets/img/logo-mark.png" alt="" width="251" height="240"></div>
+        <div>
+          <p class="eyebrow">رزنامة التوجيه الفني للتربية البدنية · العاصمة</p>
+          <h1>إحصاءات الزيارات</h1>
+          <span class="season" id="updated">جارٍ التحميل…</span>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main class="wrap">
+    <section class="kpis">
+      <div class="kpi"><b id="kVisits">—</b><span>إجمالي الزيارات</span></div>
+      <div class="kpi"><b id="kVisitors">—</b><span>عدد الزوار (أجهزة مختلفة)</span></div>
+      <div class="kpi"><b id="kToday">—</b><span>زيارات اليوم</span></div>
+      <div class="kpi"><b id="kTodayU">—</b><span>زوار اليوم (أجهزة)</span></div>
+    </section>
+    <section class="panel">
+      <h2>آخر 14 يومًا</h2>
+      <div class="chart" id="chart"></div>
+      <div class="legend2"><span style="--c:var(--brand)">الزيارات</span><span style="--c:var(--accent)">الأجهزة المختلفة</span></div>
+    </section>
+    <section class="panel">
+      <h2>التفاعل</h2>
+      <table id="acts"></table>
+    </section>
+    <section class="panel">
+      <h2>هذا الجهاز</h2>
+      <p class="note" id="trackState"></p>
+      <button class="btn btn-soft" id="toggleTrack" type="button"></button>
+      <p class="note">الإحصاء مجهول الهوية: لا ملفات تعريف ارتباط ولا بيانات شخصية. «الزوار» = أجهزة/متصفحات مختلفة (مسح بيانات المتصفح أو فتح الرابط من متصفح آخر يُحتسب زائرًا جديدًا). الأيام بتوقيت الكويت.</p>
+      <button class="link-btn" id="reload" type="button">تحديث الأرقام</button>
+    </section>
+  </main>
+  <footer class="wrap footer"><a href="./">العودة إلى الرزنامة</a></footer>
+<script>
+(function () {
+  var NS = 'https://abacus.jasoncameron.dev/get/pecal-bokashi1-x7k2/';
+  var ACTIONS = [
+    ['event-open', 'فتح تفاصيل موعد'], ['subscribe-open', 'فتح «أضف الرزنامة إلى تقويمك»'],
+    ['subscribe-apple', 'اشتراك تقويم iPhone/Mac'], ['subscribe-google', 'اشتراك تقويم Google'],
+    ['subscribe-outlook', 'اشتراك Outlook'], ['subscribe-copy', 'نسخ رابط الاشتراك'],
+    ['event-add-google', 'إضافة موعد إلى Google'], ['event-add-ics', 'إضافة موعد (ملف ICS/Apple)'],
+    ['share', 'مشاركة رابط الرزنامة'], ['event-share', 'مشاركة موعد'],
+    ['qr-open', 'فتح رمز QR'], ['qr-download', 'تنزيل صورة QR'], ['qr-share', 'مشاركة صورة QR'],
+    ['open-homescreen', 'فتح من أيقونة الشاشة الرئيسية']
+  ];
+  var MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  function $(id) { return document.getElementById(id); }
+  function get(key) {
+    return fetch(NS + encodeURIComponent(key) + '?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.json(); }).then(function (j) { return +j.value || 0; }).catch(function () { return 0; });
+  }
+  function pool(keys, n) {
+    var out = {}, i = 0;
+    function worker() { if (i >= keys.length) return Promise.resolve(); var k = keys[i++]; return get(k).then(function (v) { out[k] = v; return worker(); }); }
+    var ws = []; for (var w = 0; w < n; w++) ws.push(worker());
+    return Promise.all(ws).then(function () { return out; });
+  }
+  function kwDate(offsetDays) { return new Date(Date.now() + 3 * 3600000 - offsetDays * 864e5); }
+  function key(d) { return d.toISOString().slice(0, 10).replace(/-/g, ''); }
+  function fmt(n) { return Number(n).toLocaleString('en-US'); }
+  function load() {
+    $('updated').textContent = 'جارٍ التحميل…';
+    var days = []; for (var i = 13; i >= 0; i--) days.push(kwDate(i));
+    var keys = ['visits', 'visitors'];
+    days.forEach(function (d) { keys.push('day-' + key(d), 'dayu-' + key(d)); });
+    ACTIONS.forEach(function (a) { keys.push('act-' + a[0]); });
+    pool(keys, 6).then(function (v) {
+      var t = key(days[13]);
+      $('kVisits').textContent = fmt(v.visits); $('kVisitors').textContent = fmt(v.visitors);
+      $('kToday').textContent = fmt(v['day-' + t]); $('kTodayU').textContent = fmt(v['dayu-' + t]);
+      var max = 1; days.forEach(function (d) { max = Math.max(max, v['day-' + key(d)]); });
+      $('chart').innerHTML = days.map(function (d) {
+        var a = v['day-' + key(d)], u = v['dayu-' + key(d)];
+        return '<div class="bar" title="' + d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()] + ': ' + a + ' زيارة، ' + u + ' جهاز">' +
+          '<em>' + (a || '') + '</em><i style="height:' + (a / max * 100) + '%"><u style="height:' + (a ? u / a * 100 : 0) + '%"></u></i>' +
+          '<small>' + d.getUTCDate() + '/' + (d.getUTCMonth() + 1) + '</small></div>';
+      }).join('');
+      $('acts').innerHTML = ACTIONS.map(function (a) { return '<tr><td>' + a[1] + '</td><td>' + fmt(v['act-' + a[0]]) + '</td></tr>'; }).join('');
+      var n = new Date(Date.now() + 3 * 3600000);
+      $('updated').textContent = 'محدّث ' + n.getUTCHours() + ':' + ('0' + n.getUTCMinutes()).slice(-2) + ' (الكويت)';
+    });
+  }
+  function trackUI() {
+    var offd = !!localStorage.getItem('pecal.noTrack');
+    $('trackState').textContent = offd ? 'زيارات هذا الجهاز لا تُحتسب.' : 'زيارات هذا الجهاز تُحتسب حاليًا.';
+    $('toggleTrack').textContent = offd ? 'إعادة احتساب هذا الجهاز' : 'استثناء هذا الجهاز من الإحصاء';
+  }
+  $('toggleTrack').onclick = function () { if (localStorage.getItem('pecal.noTrack')) localStorage.removeItem('pecal.noTrack'); else localStorage.setItem('pecal.noTrack', '1'); trackUI(); };
+  $('reload').onclick = load;
+  trackUI(); load();
+})();
+</script>
+</body>
+</html>

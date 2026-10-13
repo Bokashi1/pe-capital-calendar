@@ -615,6 +615,7 @@
   function hasPlace(loc) { return loc && !/يحدد لاحق|غير محدد/.test(loc); }
 
   function openEvent(e, push) {
+    if (window.peTrack) peTrack('event-open');
     var toks = qTokens(), hits = matchedSchools(e, toks);
     var dateTxt = e.multiDay ? 'من ' + fmtDayLong(e.startDay) + '<br>إلى ' + fmtDayLong(e.endDay) + ' (' + daysWord(e.endDay - e.startDay + 1) + ')' : fmtDayLong(e.startDay);
     var timeTxt = e.allDay ? 'طوال اليوم' + (/غير محدد/.test(e.desc) ? ' — الساعة غير محددة بعد' : '')
@@ -640,7 +641,7 @@
         e.schools.map(function (s) { return '<li' + (hits.indexOf(s) >= 0 ? ' class="hit"' : '') + '>' + esc(s) + '</li>'; }).join('') + '</ol>';
     }
     h += '<div class="actions">' +
-      '<a class="btn btn-brand" href="' + esc(gcalTemplate(e)) + '" target="_blank" rel="noopener">أضف إلى Google</a>' +
+      '<a class="btn btn-brand" data-track="event-add-google" href="' + esc(gcalTemplate(e)) + '" target="_blank" rel="noopener">أضف إلى Google</a>' +
       '<button type="button" class="btn btn-soft" data-act="ics" data-id="' + e.id + '">' + (isIOS || isMac ? 'أضف لتقويم Apple' : 'تنزيل ملف التقويم') + '</button>' +
       '<button type="button" class="btn btn-soft wide" data-act="share-ev" data-id="' + e.id + '">مشاركة هذا الموعد</button></div>';
     var extra = e.intro.concat(e.notes);
@@ -685,6 +686,7 @@
     return L.map(fold).join('\r\n') + '\r\n';
   }
   function downloadEventICS(e) {
+    if (window.peTrack) peTrack('event-add-ics');
     var ics = buildEventICS(e), name = 'pe-' + ymd(e.startDay) + '-' + e.id + '.ics';
     if (isIOS) { window.location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics); return; }
     var url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
@@ -695,6 +697,7 @@
 
   // ---------------------------------------------------------------- subscribe sheet
   function openSubscribe(push) {
+    if (window.peTrack && push !== false) peTrack('subscribe-open');
     var apple = { cls: 'apple', href: WEBCAL_URL, icon: '', title: 'تقويم iPhone / iPad / Mac', sub: 'اشتراك يتحدّث تلقائيًا — اضغط «اشتراك» ثم «إضافة»' };
     var google = { cls: 'google', href: GCAL_SUBSCRIBE, icon: '📆', title: 'تقويم Google (أندرويد والكمبيوتر)', sub: 'يفتح تقويم Google — اضغط «إضافة» وسيظهر في تطبيق التقويم' };
     var outlook = { cls: 'outlook', href: OUTLOOK_SUBSCRIBE, icon: '📧', title: 'Outlook', sub: 'إضافة الرزنامة كاشتراك في Outlook' };
@@ -702,11 +705,11 @@
     var recommended = (isIOS || isMac || isAndroid) ? order[0] : null;
     var h = '<h2 id="sheetTitle">أضف الرزنامة إلى تقويمك</h2><p class="muted" style="margin:4px 0 6px">اشترك مرة واحدة، وستظهر أي مواعيد جديدة أو تعديلات في تقويم هاتفك تلقائيًا.</p>';
     order.forEach(function (o) {
-      h += '<a class="opt' + (o === recommended ? ' rec' : '') + '" href="' + esc(o.href) + '"' + (o.cls === 'apple' ? '' : ' target="_blank" rel="noopener"') + '>' +
+      h += '<a class="opt' + (o === recommended ? ' rec' : '') + '" data-track="subscribe-' + o.cls + '" href="' + esc(o.href) + '"' + (o.cls === 'apple' ? '' : ' target="_blank" rel="noopener"') + '>' +
         '<span class="oi">' + (o.cls === 'apple' ? '🍎' : o.icon) + '</span><span><b>' + o.title + '</b><small>' + o.sub + '</small></span>' +
         (o === recommended ? '<span class="badge">مُوصى به لجهازك</span>' : '') + '</a>';
     });
-    h += '<button type="button" class="opt" data-act="copy-ics"><span class="oi">🔗</span><span><b>نسخ رابط الاشتراك (iCal)</b><small>لأي تطبيق تقويم آخر: «إضافة تقويم من رابط»</small></span></button>';
+    h += '<button type="button" class="opt" data-act="copy-ics" data-track="subscribe-copy"><span class="oi">🔗</span><span><b>نسخ رابط الاشتراك (iCal)</b><small>لأي تطبيق تقويم آخر: «إضافة تقويم من رابط»</small></span></button>';
     h += '<details class="notes"><summary>مساعدة</summary>' +
       '<p><b>آيفون:</b> بعد الضغط سيظهر سؤال «الاشتراك في التقويم؟» ← اشتراك ← إضافة. (أو: الإعدادات ← التقويم ← الحسابات ← إضافة حساب ← آخر ← إضافة تقويم مشترك، والصق الرابط).</p>' +
       '<p><b>أندرويد:</b> افتح الرابط وسجّل الدخول بحساب Google ثم اضغط «إضافة». إن لم تظهر المواعيد في تطبيق التقويم: افتح التطبيق ← الإعدادات ← اختر الرزنامة ← فعّل «المزامنة».</p>' +
@@ -716,10 +719,12 @@
 
   // ---------------------------------------------------------------- share + QR
   function sharePage() {
+    if (window.peTrack) peTrack('share');
     var data = { title: 'رزنامة التوجيه الفني للتربية البدنية – العاصمة', text: 'مواعيد بطولات التربية البدنية – منطقة العاصمة التعليمية 2026–2027', url: SITE_URL };
     if (navigator.share) navigator.share(data).catch(function () {}); else copy(SITE_URL, 'تم نسخ رابط الرزنامة');
   }
   function shareEvent(e) {
+    if (window.peTrack) peTrack('event-share');
     var url = SITE_URL + '#e=' + e.id;
     var when = e.allDay ? fmtDayLong(e.startDay) + (e.multiDay ? ' – ' + fmtDayLong(e.endDay) : '') : fmtDayLong(e.startDay) + ' ' + fmtTime(e.start);
     var text = e.emojis.join('') + ' ' + e.cleanTitle + '\n📅 ' + when + '\n📍 ' + (e.location || 'يحدد لاحقًا');
@@ -774,6 +779,7 @@
   window.__makeQRCanvas = makeQRCanvas;
   var qrCanvas = null;
   function openQR(push) {
+    if (window.peTrack && push !== false) peTrack('qr-open');
     var h = '<h2 id="sheetTitle">رمز QR للرزنامة</h2><p class="muted" style="margin:4px 0">اعرضه على الشاشة أو اطبعه ليمسحه المعلمون بكاميرا الهاتف.</p>' +
       '<div class="qr-box" id="qrBox"></div>' +
       '<div class="url-box"><span>' + esc(SITE_URL) + '</span><button type="button" class="link-btn" data-act="copy-link">نسخ</button></div>' +
@@ -788,6 +794,7 @@
   }
   function qrBlob(cb) { (qrCanvas || makeQRCanvas(SITE_URL)).toBlob(cb, 'image/png'); }
   function qrDownload() {
+    if (window.peTrack) peTrack('qr-download');
     qrBlob(function (b) {
       var url = URL.createObjectURL(b), a = document.createElement('a'); a.href = url; a.download = 'pe-capital-calendar-qr.png';
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
@@ -795,6 +802,7 @@
     });
   }
   function qrShare() {
+    if (window.peTrack) peTrack('qr-share');
     qrBlob(function (b) {
       var file = new File([b], 'pe-capital-calendar-qr.png', { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], title: 'رمز QR – رزنامة التربية البدنية', text: SITE_URL }).catch(function () {});
