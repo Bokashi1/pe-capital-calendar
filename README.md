@@ -27,3 +27,9 @@
 ## Calendar
 - ID: `149ccba232b830c7557629b747f383272b6576bc8ef69c284663f897ad860b2d@group.calendar.google.com`
 - ICS: https://calendar.google.com/calendar/ical/149ccba232b830c7557629b747f383272b6576bc8ef69c284663f897ad860b2d%40group.calendar.google.com/public/basic.ics
+
+## Push notifications (OneSignal, branch `push-notifications`)
+- Opt-in button «فعّل الإشعارات» → `assets/push.js` (set `ONESIGNAL_APP_ID`). iPhone users outside the Home-Screen app get Arabic install guidance.
+- Push worker: `push/onesignal/OneSignalSDKWorker.js`, scope `/pe-capital-calendar/push/onesignal/` (separate from the caching `sw.js`). Never move/rename it once live.
+- OneSignal dashboard: Web platform → **Custom Code**, Site URL `https://bokashi1.github.io`.
+- Actions secrets `ONESIGNAL_APP_ID`, `ONESIGNAL_REST_API_KEY` → automatic messages on calendar changes (`scripts/push_notify.py diff`), `push-send.yml` (manual backup), `push-reminders.yml` (needs repo variable `PUSH_REMINDERS=on`).

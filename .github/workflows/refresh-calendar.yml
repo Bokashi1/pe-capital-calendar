@@ -28,12 +28,15 @@ jobs:
           grep -q "END:VCALENDAR" /tmp/new.ics
 
       - name: Commit only on a real calendar change
+        id: commit
         run: |
           set -euo pipefail
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # Canonical comparison: unfolded, DTSTAMP dropped, VEVENTs sorted by UID/RECURRENCE-ID
+          cp data/events.ics /tmp/old.ics 2>/dev/null || : > /tmp/old.ics
           RESULT=$(python3 scripts/update_snapshot.py /tmp/new.ics)
+          echo "result=$RESULT" >> "$GITHUB_OUTPUT"
           echo "Result: $RESULT"
           if [ "$RESULT" = "changed" ]; then
             git add data/events.ics data/meta.json
@@ -53,3 +56,13 @@ jobs:
           fi
           for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 5; done
           exit 1
+
+      # Web push (OneSignal). Runs only after the change was pushed; silently skipped when the
+      # ONESIGNAL_APP_ID / ONESIGNAL_REST_API_KEY secrets are not set. Never fails the job.
+      - name: Push notification about added / changed / removed events
+        if: steps.commit.outputs.result == 'changed'
+        continue-on-error: true
+        env:
+          ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
+          ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
+        run: python3 scripts/push_notify.py diff /tmp/old.ics /tmp/new.ics

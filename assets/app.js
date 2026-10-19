@@ -873,6 +873,7 @@
     if (cached && cached.payload) apply(cached.payload, 'cache', { stamp: cached.stamp, lastChange: cached.lastChange });
   } catch (e) {}
   if (!state.events.length) render();
+  window.PECAL = { showSheet: showSheet, closeSheet: closeSheet, toast: toast, isIOS: isIOS };
   refresh();
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
