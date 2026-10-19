@@ -55,7 +55,8 @@
       }).then(function () {
         OS = OneSignal;
         setOn(OneSignal.User.PushSubscription.optedIn);
-        OneSignal.User.PushSubscription.addEventListener('change', function (e) { setOn(e.current.optedIn); });
+        OneSignal.User.PushSubscription.addEventListener('change', function () { setOn(OneSignal.User.PushSubscription.optedIn); });
+        [1500, 5000].forEach(function (t) { setTimeout(function () { setOn(OneSignal.User.PushSubscription.optedIn); }, t); });
         cb(OS);
       });
     });
