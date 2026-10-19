@@ -6,7 +6,7 @@
 (function () {
   'use strict';
   // >>> PLACEHOLDER: paste the OneSignal App ID (Settings > Keys & IDs). Empty = feature hidden.
-  var ONESIGNAL_APP_ID = '';
+  var ONESIGNAL_APP_ID = '06c4f1bf-d868-46f4-ba0c-88a4be80d7e7';
   // <<<
   var BASE = location.pathname.replace(/[^/]*$/, '');          // "/pe-capital-calendar/"
   var btn = document.getElementById('btnNotify'), txt = document.getElementById('btnNotifyText');
