@@ -236,3 +236,12 @@ details.notes p{margin:6px 0}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 @media (min-width:760px){.chips-row,.chips-row.scroll{flex-wrap:wrap;overflow:visible;margin-inline:0;padding-inline:0}}
+
+/* ---- Push notifications ---- */
+.btn-notify{width:100%;margin-top:10px;background:rgba(18,184,134,.22);color:#fff;border:1px solid rgba(18,184,134,.6);backdrop-filter:blur(8px)}
+.btn-notify svg{width:1.2em;height:1.2em;fill:currentColor}
+.btn-notify.on{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);font-weight:500}
+.ios-steps{margin:12px 0;padding:0;list-style:none;counter-reset:s}
+.ios-steps li{counter-increment:s;display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line);line-height:1.6}
+.ios-steps li::before{content:counter(s);flex:none;width:28px;height:28px;border-radius:50%;background:var(--brand);color:#fff;font-weight:800;display:grid;place-items:center}
+.ios-steps .ico{display:inline-block;vertical-align:middle;width:1.2em;height:1.2em;fill:var(--brand)}

@@ -1,0 +1,27 @@
+name: Send custom push notification
+
+# Backup way to send a custom notification (GitHub app/website: Actions > this workflow > Run workflow).
+# The everyday way is the OneSignal dashboard / mobile app.
+on:
+  workflow_dispatch:
+    inputs:
+      title: { description: "العنوان", required: true, default: "رزنامة التربية البدنية" }
+      body:  { description: "نص الإشعار", required: true }
+      url:   { description: "رابط يفتح عند الضغط (اختياري)", required: false, default: "" }
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
+          ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
+          T: ${{ inputs.title }}
+          B: ${{ inputs.body }}
+          U: ${{ inputs.url }}
+        run: python3 scripts/push_notify.py send "$T" "$B" "$U"
