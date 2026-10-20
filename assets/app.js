@@ -154,22 +154,44 @@
     return { fields: fields, order: order, schools: schools, notes: notes, intro: free };
   }
 
+  // stage mentioned anywhere: ابتدائي/الابتدائية/المرحلة الابتدائية, متوسط/المتوسطة, ثانوي/الثانوية
+  var STAGE_ANY = [
+    ['ابتدائي', /(?:^|[^\u0600-\u06FF])(?:المرحل[ةه]\s+)?(?:ال)?ابتدائ/],
+    ['متوسط', /(?:^|[^\u0600-\u06FF])(?:المرحل[ةه]\s+)?(?:ال)?متوسط/],
+    ['ثانوي', /(?:^|[^\u0600-\u06FF])(?:المرحل[ةه]\s+)?(?:ال)?ثانوي/],
+    ['رياض الأطفال', /رياض الأطفال/]
+  ];
+  function stageAny(t) { t = t || ''; for (var i = 0; i < STAGE_ANY.length; i++) if (STAGE_ANY[i][1].test(t)) return STAGE_ANY[i][0]; return ''; }
+  function stageTok(t) { return stageOf(t) || stageOf(t.replace(/^(?:المرحل[ةه]\s+)?(?:ال)?/, '')); }
+  function typeTok(t) { return typeOf(t) || typeOf(t.replace(/^(?:البطول[ةه]\s+|بطول[ةه]\s+)?(?:ال)?/, '')); }
+  function cleanSportTok(t) {
+    t = t.replace(/^(?:(?:بطول[ةه]|البطول[ةه]|دوري|الدوري|منافسات|مسابق[ةه])\s+)+/, '').trim();
+    t = t.replace(/^الكر[ةه]\s+(?=ال)/, 'كرة ');
+    return t;
+  }
+
   function enrich(ev) {
-    var tokens = ev.summary.split('|').map(function (t) { return t.trim(); }).filter(Boolean);
+    var tokens = (ev.summary || '').split(/\s*[|｜،]\s*|\s+[-–—]\s+/).map(function (t) { return t.replace(/\s+/g, ' ').trim(); }).filter(Boolean);
     var stage = '', type = '', rest = [];
     tokens.forEach(function (t) {
-      var s = stageOf(t), ty = typeOf(t);
+      var s = stageTok(t), ty = typeTok(t);
       if (s && !stage) { stage = s; return; }
       if (s) return;
       if (ty) { if (!type) type = ty; return; }
-      if (rest.indexOf(t) < 0) rest.push(t);
+      if (/^(?:المرحل[ةه])$/.test(t)) return;
+      t = cleanSportTok(t);
+      if (t && rest.indexOf(t) < 0) rest.push(t);
     });
+    if (!stage) stage = stageAny(ev.summary);
     var descText = htmlToText(ev.description || '');
     var d = parseDescription(descText);
     var F = d.fields;
-    if (!stage && F['المرحلة']) stage = stageOf(F['المرحلة']);
-    if (!type && /كأس التفوق|خارجي/.test(descText.slice(0, 120))) type = 'خارجية';
-    var sportRaw = rest.join(' – ') || F['اللعبة'] || F['نوع البطولة'] || '';
+    if (!stage && F['المرحلة']) stage = stageOf(F['المرحلة']) || stageAny(F['المرحلة']);
+    if (!stage) stage = stageAny(descText);
+    if (!type && F['نوع البطولة']) type = typeTok(F['نوع البطولة']);
+    if (!type && /كأس التفوق|خارجي/.test((ev.summary || '') + ' ' + descText.slice(0, 120))) type = 'خارجية';
+    if (!type) type = 'داخلية';
+    var sportRaw = rest.join(' – ') || cleanSportTok(F['اللعبة'] || '') || (F['نوع البطولة'] && !typeTok(F['نوع البطولة']) ? cleanSportTok(F['نوع البطولة']) : '');
     var sports = sportRaw ? splitSports(sportRaw) : [];
     var title = sports.length ? sports.join(' و') : (tokens.length ? tokens.join(' – ') : (ev.summary || 'موعد'));
     title = title.replace(/\s+و(?=ال)/g, ' و');
