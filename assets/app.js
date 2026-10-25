@@ -133,10 +133,36 @@
   function typeColor(t) { for (var i = 0; i < TYPES.length; i++) if (TYPES[i].key === t) return TYPES[i].color; return 'var(--muted)'; }
 
   var NOTE_KEYS = /^(مرجع|المصدر|مصدر|ملاحظ|ملاحظة تنظيمية)/;
+  var RESULT_KEYS = /^(?:نتائج(?:\s+البطولة)?|نتيجة|النتائج)$/;
+  var RESULT_STOP = /^(مرجع|المصدر|مصدر|ملاحظة|تفاصيل المجموعة|المجموعة|المدارس|الفرق|المشارك|العام الدراسي|المرحلة|نوع البطولة|اللعبة|وقت|المكان|الموقع)/;
   function parseDescription(text) {
-    var lines = text.split(/\n/).map(function (l) { return l.replace(/\u00a0/g, ' ').trim(); }).filter(Boolean);
-    var fields = {}, order = [], schools = [], notes = [], free = [], inSchools = false;
-    lines.forEach(function (l) {
+    var raw = text.split(/\n/).map(function (l) { return l.replace(/\u00a0/g, ' ').trim(); });
+    var fields = {}, order = [], schools = [], notes = [], free = [], results = [];
+    var inSchools = false, inResults = false;
+    raw.forEach(function (l) {
+      if (!l) { return; } // keep results mode across blank lines after the heading
+      // Tournament results block: heading then numbered/bullet lines
+      if (RESULT_KEYS.test(l.replace(/\s*[:：]\s*$/, '').trim())) {
+        inResults = true; inSchools = false; return;
+      }
+      var rkv = /^([^:：]{2,40})[:：]\s*(.*)$/.exec(l);
+      if (rkv && RESULT_KEYS.test(rkv[1].trim())) {
+        inResults = true; inSchools = false;
+        if (rkv[2].trim()) results.push(rkv[2].trim());
+        return;
+      }
+      if (inResults) {
+        var stopKv = /^([^:：]{2,40})[:：]\s*(.*)$/.exec(l);
+        if (stopKv && RESULT_STOP.test(stopKv[1].trim())) {
+          inResults = false;
+          // fall through to normal handling of this heading line
+        } else {
+          var rnum = /^(?:\d+|[٠-٩]+)\s*[.\-)–]\s*(.+)$/.exec(l) || /^[•·\-]\s*(.+)$/.exec(l);
+          if (rnum) { results.push((rnum[1] || rnum[2]).trim()); return; }
+          inResults = false;
+          // non-ranked line ends the block; fall through
+        }
+      }
       var num = /^(?:\d+|[٠-٩]+)\s*[.\-)–]\s*(.+)$/.exec(l) || /^[•·\-]\s*(.+)$/.exec(l);
       if (num && (inSchools || /مدرس|^م\s*\//.test(num[1]))) { schools.push(num[1].trim()); inSchools = true; return; }
       var kv = /^([^:：]{2,40})[:：]\s*(.*)$/.exec(l);
@@ -145,13 +171,14 @@
         inSchools = /المدارس|الفرق|المشارك/.test(k) && !v;
         if (inSchools) return;
         if (NOTE_KEYS.test(k)) { notes.push(k + ': ' + v); return; }
+        if (RESULT_KEYS.test(k)) { if (v) results.push(v); return; }
         if (!(k in fields)) order.push(k);
         fields[k] = v; return;
       }
       inSchools = false;
       (free.length || order.length ? notes : free).push(l);
     });
-    return { fields: fields, order: order, schools: schools, notes: notes, intro: free };
+    return { fields: fields, order: order, schools: schools, notes: notes, intro: free, results: results };
   }
 
   // stage mentioned anywhere: ابتدائي/الابتدائية/المرحلة الابتدائية, متوسط/المتوسطة, ثانوي/الثانوية
@@ -208,7 +235,7 @@
       raw: ev, uid: ev.uid, id: hash(ev.instanceKey || (ev.uid + ev.start)), start: ev.start, end: ev.end,
       allDay: allDay, startDay: startDay, endDay: endDay, multiDay: endDay > startDay,
       stage: stage, type: type, sports: sports, title: title, emojis: emojis.slice(0, 2),
-      location: ev.location, desc: descText, fields: F, fieldOrder: d.order, schools: d.schools, notes: d.notes, intro: d.intro,
+      location: ev.location, desc: descText, fields: F, fieldOrder: d.order, schools: d.schools, notes: d.notes, intro: d.intro, results: d.results || [],
       group: group, subtitle: subtitle, endUnknown: endUnknown, color: stageColor(stage),
       cleanTitle: [stage, type, title].filter(Boolean).join(' | ')
     };
@@ -652,7 +679,7 @@
       '<div class="info-row"><span class="ico">📍</span><div><b>المكان</b>' + (hasPlace(e.location)
         ? '<a href="' + mapsUrl(e.location) + '" target="_blank" rel="noopener">' + esc(e.location) + ' ↗</a>' : esc(e.location || 'يحدد لاحقًا')) + '</div></div>';
     if (e.group) h += '<div class="info-row"><span class="ico">👥</span><div><b>تفاصيل المجموعة</b>' + escT(e.group) + '</div></div>';
-    var skip = /^(العام الدراسي|المرحلة|نوع البطولة|اللعبة|وقت البداية|وقت النهاية|تفاصيل المجموعة|المجموعة|المكان|الموقع)$/;
+    var skip = /^(العام الدراسي|المرحلة|نوع البطولة|اللعبة|وقت البداية|وقت النهاية|تفاصيل المجموعة|المجموعة|المكان|الموقع|نتائج(?: البطولة)?|نتيجة|النتائج)$/;
     e.fieldOrder.forEach(function (k) {
       if (skip.test(k) || !e.fields[k]) return;
       h += '<div class="info-row"><span class="ico">ℹ️</span><div><b>' + esc(k) + '</b>' + escT(e.fields[k]) + '</div></div>';
@@ -661,6 +688,10 @@
     if (e.schools.length) {
       h += '<h3>🏫 المدارس المشاركة (' + e.schools.length + ')</h3><ol class="schools" style="--sc:' + e.color + '">' +
         e.schools.map(function (s) { return '<li' + (hits.indexOf(s) >= 0 ? ' class="hit"' : '') + '>' + esc(s) + '</li>'; }).join('') + '</ol>';
+    }
+    if (e.results && e.results.length) {
+      h += '<h3>🏆 النتائج</h3><ol class="schools results" style="--sc:' + e.color + '">' +
+        e.results.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>';
     }
     h += '<div class="actions">' +
       '<a class="btn btn-brand" data-track="event-add-google" href="' + esc(gcalTemplate(e)) + '" target="_blank" rel="noopener">أضف إلى Google</a>' +
