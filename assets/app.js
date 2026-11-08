@@ -488,7 +488,7 @@
     var p = kw(e.start), h = p.h % 12 || 12;
     return '<span>' + h + ':' + pad(p.mi) + '</span><small>' + (p.h < 12 ? 'صباحًا' : 'مساءً') + '</small>';
   }
-  function cardHTML(e, toks) {
+  function cardHTML(e, toks, onDay) {
     var hits = matchedSchools(e, toks);
     var sub = hits.length ? '🏫 ' + esc(hits[0]) + (hits.length > 1 ? ' +' + (hits.length - 1) : '')
       : '📍 ' + esc(e.location || 'المكان يحدد لاحقًا') + (e.subtitle ? ' · ' + escT(e.subtitle) : '');
@@ -497,7 +497,7 @@
       '<span class="sport-ico" style="' + (e.emojis.length > 1 ? 'font-size:1.05rem' : '') + '">' + e.emojis.join('') + '</span>' +
       '<span class="card-main"><span class="card-title">' + esc(e.title) + '</span>' +
       '<span class="card-sub" style="display:block">' + sub + '</span>' +
-      '<span class="tags">' + tagsHTML(e) + '</span></span>' +
+      '<span class="tags">' + tagsHTML(e) + (e.multiDay && onDay != null ? '<span class="tag" style="--tc:var(--muted)">اليوم ' + (onDay - e.startDay + 1) + ' من ' + (e.endDay - e.startDay + 1) + '</span>' : '') + '</span></span>' +
       '<span class="card-time">' + timeHTML(e) + '</span></button>';
   }
   function dayHeadHTML(k, sub) {
@@ -515,9 +515,11 @@
     var shown = state.showPast ? list : upcoming;
     var groups = {}, keys = [];
     shown.forEach(function (e) {
-      var k = state.showPast ? e.startDay : Math.max(e.startDay, tk);
-      if (!groups[k]) { groups[k] = []; keys.push(k); }
-      groups[k].push(e);
+      var from = state.showPast ? e.startDay : Math.max(e.startDay, tk);
+      for (var k = from; k <= e.endDay; k++) {
+        if (!groups[k]) { groups[k] = []; keys.push(k); }
+        groups[k].push({ e: e, k: k });
+      }
     });
     keys.sort(function (a, b) { return a - b; });
     var h = '';
@@ -529,7 +531,7 @@
     }
     keys.forEach(function (k) {
       h += '<section class="day' + (k === tk ? ' today' : '') + '">' + dayHeadHTML(k) + '<div class="cards">' +
-        groups[k].map(function (e) { return cardHTML(e, toks); }).join('') + '</div></section>';
+        groups[k].map(function (x) { return cardHTML(x.e, toks, x.k); }).join('') + '</div></section>';
     });
     $('listView').innerHTML = h;
   }
@@ -563,7 +565,7 @@
       .map(function (s) { return '<span><i style="--sc:' + s.color + '"></i>' + s.key + '</span>'; }).join('') + '</div>';
     var sel = byDay[state.selDay] || [];
     h += '<section class="day' + (state.selDay === tk ? ' today' : '') + '">' + dayHeadHTML(state.selDay, sel.length ? countWord(sel.length) : '') +
-      (sel.length ? '<div class="cards">' + sel.map(function (e) { return cardHTML(e, qTokens()); }).join('') + '</div>'
+      (sel.length ? '<div class="cards">' + sel.map(function (e) { return cardHTML(e, qTokens(), state.selDay); }).join('') + '</div>'
         : '<div class="empty" style="padding:18px"><p>لا توجد مواعيد في هذا اليوم.</p></div>') + '</section>';
     $('monthView').innerHTML = h;
   }
