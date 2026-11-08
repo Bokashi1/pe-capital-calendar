@@ -43,9 +43,16 @@ def events(path):
             elif name in ("DTSTART", "DTEND") and ":" in l: p[name] = l
         if "DTSTART" not in p or p.get("STATUS", "").upper() == "CANCELLED": continue
         start, allday = parse_dt(p["DTSTART"])
+        end = parse_dt(p["DTEND"])[0] if "DTEND" in p else start
         out[(p.get("UID", ""), p.get("RECURRENCE-ID", ""))] = {
-            "title": p.get("SUMMARY", "موعد"), "loc": p.get("LOCATION", ""), "start": start, "allday": allday}
+            "title": p.get("SUMMARY", "موعد"), "loc": p.get("LOCATION", ""), "start": start, "end": end, "allday": allday}
     return out
+
+def on_day(e, target):
+    s = e["start"].astimezone(KW).date() if e["start"].tzinfo else e["start"].date()
+    en = e["end"].astimezone(KW) if e["end"].tzinfo else e["end"]
+    last = (en - dt.timedelta(seconds=1)).date() if en > e["start"] else s
+    return s <= target <= last
 
 def when(e):
     d = e["start"]
@@ -102,9 +109,9 @@ def main(a):
     elif a[:1] == ["remind"]:
         days = int(a[1]) if len(a) > 1 else 1
         target = (dt.datetime.now(KW) + dt.timedelta(days=days)).date()
-        evs = sorted((e for e in events("data/events.ics").values() if e["start"].date() == target), key=lambda e: e["start"])
+        evs = sorted((e for e in events("data/events.ics").values() if on_day(e, target)), key=lambda e: e["start"])
         if not evs: print("push: nothing to remind"); return
-        label = "غدًا" if days == 1 else f"بعد {days} أيام"
+        label = "غدًا" if days == 1 else ("اليوم" if days == 0 else f"بعد {days} أيام")
         if len(evs) == 1:
             e = evs[0]; send(f"⏰ تذكير: {label}", f"{short(e['title'])} – {when(e)}" + (f" – {e['loc']}" if e["loc"] else ""))
         else:
